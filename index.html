@@ -129,7 +129,7 @@
     </div>
     <div id="galleryZone" class="dropzone gallery">
       <strong id="galleryTitle">🖼️ Gallery se photos jodo</strong>
-      <small>Folder ke bina, seedha photo(s) chuno — mobile pe bhi chalega</small>
+      <small>Ye photos bhi usi folder ke andar save hongi jo tumne upload kiya hai</small>
       <input type="file" id="fileInput" accept="image/*" multiple class="hidden">
     </div>
   </div>
@@ -244,7 +244,7 @@
   ];
   const ALL_NAMES = NAME_GROUPS.flatMap(g => g[1]);
 
-  const state = { items: [], others: [], current: null, showOnlyDup: false, gridSearch: '', gridFilter: 'all', pickMode: false, selected: new Set() };
+  const state = { items: [], others: [], current: null, showOnlyDup: false, gridSearch: '', gridFilter: 'all', pickMode: false, selected: new Set(), rootDir: null };
 
   const dropzone = document.getElementById('dropzone');
   const dzTitle = document.getElementById('dzTitle');
@@ -542,7 +542,19 @@
     dzTitle.textContent = 'Photos load ho rahi hain... (0/' + total0 + ')';
     galleryTitle.textContent = 'Photos load ho rahi hain... (0/' + total0 + ')';
     for (const f of fileArr){
-      const relPath = f.webkitRelativePath || f.__relPath || f.name;
+      // Files that came from a real folder (webkitdirectory input, or a
+      // dragged-in folder) carry their own folder path. Plain gallery /
+      // single-file picks don't have one — so we tuck those inside the
+      // same root folder that's already been uploaded, instead of letting
+      // them land outside it at the zip/folder root.
+      let relPath = f.webkitRelativePath || f.__relPath || null;
+      if (relPath && !state.rootDir){
+        const topSeg = relPath.split('/')[0];
+        if (topSeg) state.rootDir = topSeg + '/';
+      }
+      if (!relPath){
+        relPath = (state.rootDir || '') + f.name;
+      }
       const isImage = f.type.startsWith('image/') || /\.(jpe?g|png|webp|gif|bmp)$/i.test(f.name);
       if (isImage){
         try {
@@ -641,7 +653,7 @@
   resetBtn.addEventListener('click', () => {
     if (!confirm('Sab reset kar du? Saara kaam mit jaega.')) return;
     state.items = []; state.others = []; state.current = null;
-    state.pickMode = false; state.selected.clear();
+    state.pickMode = false; state.selected.clear(); state.rootDir = null;
     workspace.classList.add('hidden');
     footerBar.classList.add('hidden');
     statsBar.classList.add('hidden');
